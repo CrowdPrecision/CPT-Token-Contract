@@ -301,36 +301,36 @@ contract StandardToken is ERC20, BasicToken {
 /*
  * CrowdPrecisionToken is a standard ERC20 token with some additional functionalities:
  * - Transfers are only enabled after contract owner enables it (after the ITS)
- * - Contract sets 75% of the total supply as allowance for ITS contract
+ * - Contract sets 53.3% of the total supply as allowance for ITS contract
  */
-contract CrowdPrecisionToken is StandardToken, BurnableToken, Ownable 
+contract CrowdPrecisionToken is StandardToken, BurnableToken, Ownable
 {
     string public constant symbol = "CPT";
     string public constant name = "CrowdPrecision Token";
     uint8 public constant decimals = 18;
-    uint256 public constant INITIAL_SUPPLY = 45000000000 * ( 10 ** uint256( decimals ) );
-    uint256 public constant TOKEN_SALE_ALLOWANCE = 3150000000 * ( 10 ** uint256( decimals ) );
+    uint256 public constant INITIAL_SUPPLY = 4500000000 * ( 10 ** uint256( decimals ) );
+    uint256 public constant TOKEN_SALE_ALLOWANCE = 2400000000 * ( 10 ** uint256( decimals ) );
     uint256 public constant ADMIN_ALLOWANCE = INITIAL_SUPPLY - TOKEN_SALE_ALLOWANCE;
-    
+
     address public adminAddr;
     address public tokenSaleAddr;
     bool public transferEnabled = false;
-    
-    modifier onlyWhenTransferAllowed( ) 
+
+    modifier onlyWhenTransferAllowed( )
     {
-        require( transferEnabled 
-                || msg.sender == adminAddr 
+        require( transferEnabled
+                || msg.sender == adminAddr
                 || msg.sender == tokenSaleAddr );
         _;
     }
 
-    modifier onlyTokenSaleAddrNotSet( ) 
+    modifier onlyTokenSaleAddrNotSet( )
     {
         require( tokenSaleAddr == address( 0x0 ) );
         _;
     }
 
-    modifier validDestination( address to ) 
+    modifier validDestination( address to )
     {
         require( to != address( 0x0 ) );
         require( to != address( this ) );
@@ -339,8 +339,8 @@ contract CrowdPrecisionToken is StandardToken, BurnableToken, Ownable
         require( to != address( tokenSaleAddr ) );
         _;
     }
-    
-    function CrowdPrecisionToken( address admin ) public 
+
+    function CrowdPrecisionToken( address admin ) public
     {
         totalSupply = INITIAL_SUPPLY;
         balances[ msg.sender ] = totalSupply;
@@ -350,7 +350,7 @@ contract CrowdPrecisionToken is StandardToken, BurnableToken, Ownable
         approve( adminAddr, ADMIN_ALLOWANCE );
     }
 
-    function setTokenSale( address saleAddr, uint256 amountForSale ) external onlyOwner onlyTokenSaleAddrNotSet 
+    function setTokenSale( address saleAddr, uint256 amountForSale ) external onlyOwner onlyTokenSaleAddrNotSet
     {
         require( !transferEnabled );
 
@@ -360,40 +360,40 @@ contract CrowdPrecisionToken is StandardToken, BurnableToken, Ownable
         approve( saleAddr, amount );
         tokenSaleAddr = saleAddr;
     }
-    
-    function enableTransfer( ) external onlyOwner 
+
+    function enableTransfer( ) external onlyOwner
     {
         transferEnabled = true;
         // Remove the allowance to spend tokens
         approve( tokenSaleAddr, 0 );
     }
 
-    function transfer( address to, uint256 value ) public onlyWhenTransferAllowed validDestination( to ) returns ( bool ) 
+    function transfer( address to, uint256 value ) public onlyWhenTransferAllowed validDestination( to ) returns ( bool )
     {
         return super.transfer( to, value );
     }
-    
-    function transferFrom( address from, address to, uint256 value ) public onlyWhenTransferAllowed validDestination( to ) returns ( bool ) 
+
+    function transferFrom( address from, address to, uint256 value ) public onlyWhenTransferAllowed validDestination( to ) returns ( bool )
     {
         return super.transferFrom( from, to, value );
     }
-    
-    function burn( uint256 value ) public 
+
+    function burn( uint256 value ) public
     {
-        require( transferEnabled 
+        require( transferEnabled
                 || msg.sender == owner );
         super.burn( value );
     }
 }
 
-contract CrowdPrecisionTokenSale is Pausable 
+contract CrowdPrecisionTokenSale is Pausable
 {
     address cptAddress = this;
-    
+
     using SafeMath for uint256;
 
     uint256 public startTime;
-    
+
     uint256 public endTime;
 
     // Address where funds are collected
@@ -405,21 +405,21 @@ contract CrowdPrecisionTokenSale is Pausable
     uint256 public rate;
 
     uint256 public weiRaised;
-    
+
     mapping( address => bool ) public whitelist;
 
     mapping( address => uint256 ) public contributions;
 
     // Change to equal $31.5M at time of token sale
-    uint256 public constant FUNDING_ETH_HARD_CAP = 60844 * 1 ether;
+    uint256 public constant FUNDING_ETH_HARD_CAP = 30000 * 1 ether;
 
     uint256 public constant MINIMUM_CONTRIBUTION = 10**17; //0.1 ether
-    
+
     uint256 public constant MAXIMUM_CONTRIBUTION = 5 ether;
 
     Stages public stage;
 
-    enum Stages { 
+    enum Stages {
         Setup,
         SaleStarted,
         SaleEnded,
@@ -427,25 +427,25 @@ contract CrowdPrecisionTokenSale is Pausable
     }
 
     event SaleOpens( uint256 startTime, uint256 endTime );
-    
+
     event SaleCloses( uint256 endTime, uint256 totalWeiRaised );
-    
+
     event RefundingStarted( uint256 startTime );
-    
+
     event TokenPurchase( address indexed purchaser, uint256 value, uint256 amount );
 
-    modifier atStage( Stages expectedStage ) 
+    modifier atStage( Stages expectedStage )
     {
         require( stage == expectedStage );
         _;
     }
 
-    modifier validPurchase( ) 
+    modifier validPurchase( )
     {
-        require( now >= startTime 
+        require( now >= startTime
                 && now <= endTime
                 && stage == Stages.SaleStarted );
-        
+
         uint256 contributionInWei = msg.value;
         address participant = msg.sender;
         //What if participant has previously contributed? Should an additional contribution of less then 0.1 ether be allowed?
@@ -456,10 +456,10 @@ contract CrowdPrecisionTokenSale is Pausable
     }
 
     function CrowdPrecisionTokenSale(
-        uint256 cptToEtherRate, 
+        uint256 cptToEtherRate,
         address beneficiaryAddr,
         address tokenAddress
-    ) public 
+    ) public
     {
         require( cptToEtherRate > 0 );
         require( beneficiaryAddr != address( 0 ) );
@@ -474,7 +474,7 @@ contract CrowdPrecisionTokenSale is Pausable
     /**
      * Fallback function can be used to buy tokens
      */
-    function ( ) public payable 
+    function ( ) public payable
     {
         buy( );
     }
@@ -483,25 +483,25 @@ contract CrowdPrecisionTokenSale is Pausable
      * Withdraw available ethers into beneficiary account, serves as a safety, should never be needed
      * TODO: may be remove this method?
      */
-    function ownerSafeWithdrawal( ) external onlyOwner 
+    function ownerSafeWithdrawal( ) external onlyOwner
     {
         beneficiary.transfer( cptAddress.balance );
     }
 
-    function updateRate( uint256 cptToEtherRate ) public onlyOwner atStage( Stages.Setup ) 
+    function updateRate( uint256 cptToEtherRate ) public onlyOwner atStage( Stages.Setup )
     {
         rate = cptToEtherRate;
     }
-    
+
     function addToWhitelist( address[] users ) public onlyOwner atStage( Stages.Setup )
     {
-        for( uint32 i = 0; i < users.length; i++ ) 
+        for( uint32 i = 0; i < users.length; i++ )
         {
             whitelist[ users[ i ] ] = true;
         }
     }
 
-    function startSale( uint256 durationInSeconds ) public onlyOwner atStage( Stages.Setup ) 
+    function startSale( uint256 durationInSeconds ) public onlyOwner atStage( Stages.Setup )
     {
         stage = Stages.SaleStarted;
         startTime = now;
@@ -509,66 +509,66 @@ contract CrowdPrecisionTokenSale is Pausable
         emit SaleOpens( startTime, endTime );
     }
 
-    function endSale( ) public onlyOwner atStage( Stages.SaleStarted ) 
+    function endSale( ) public onlyOwner atStage( Stages.SaleStarted )
     {
         endSaleImpl( );
     }
-    
-    function endSaleImpl( ) internal 
+
+    function endSaleImpl( ) internal
     {
         endTime = now;
         stage = Stages.SaleEnded;
         emit SaleCloses( endTime, weiRaised );
     }
-    
-    function startRefunding( ) public onlyOwner atStage( Stages.SaleEnded ) 
+
+    function startRefunding( ) public onlyOwner atStage( Stages.SaleEnded )
     {
         startRefundingImpl( );
     }
-    
-    function startRefundingImpl( ) internal 
+
+    function startRefundingImpl( ) internal
     { //TODO: startRefunding automatically if soft cap was not reached.
         startTime = now;
         stage = Stages.Refunding;
         emit RefundingStarted( startTime );
     }
-    
-    function buy( ) public payable whenNotPaused atStage( Stages.SaleStarted ) validPurchase returns ( bool ) 
+
+    function buy( ) public payable whenNotPaused atStage( Stages.SaleStarted ) validPurchase returns ( bool )
     {
-        if( whitelist[msg.sender] ) 
+        if( whitelist[msg.sender] )
         {
             address participant = msg.sender;
             uint256 contributionInWei = msg.value;
             uint256 tokens = contributionInWei.mul(rate);
-        
-            if ( !token.transferFrom( token.owner( ), participant, tokens ) ) 
+
+            if ( !token.transferFrom( token.owner( ), participant, tokens ) )
             {
                 revert( );
             }
 
             weiRaised = weiRaised.add( contributionInWei );
             contributions[ participant ] = contributions[ participant ].add( contributionInWei );
-            
-            if ( weiRaised >= FUNDING_ETH_HARD_CAP ) 
+
+            if ( weiRaised >= FUNDING_ETH_HARD_CAP )
             {
                 endSaleImpl( );
             }
-        
+
             beneficiary.transfer( contributionInWei );
             emit TokenPurchase( msg.sender, contributionInWei, tokens );
-        
+
             return true;
         }
         revert( );
     }
 
-    function hasEnded( ) public view returns ( bool ) 
+    function hasEnded( ) public view returns ( bool )
     {
         return now > endTime || stage == Stages.SaleEnded;
     }
 
     //TODO: check if this is safe, if reentrancy is not possible, if contribution is reverted if transfer failes.
-    function withdrawRefund( ) public whenNotPaused atStage( Stages.SaleEnded ) returns( bool ) 
+    function withdrawRefund( ) public whenNotPaused atStage( Stages.SaleEnded ) returns( bool )
     {
         address participant = msg.sender;
         uint refund = contributions[ participant ];
